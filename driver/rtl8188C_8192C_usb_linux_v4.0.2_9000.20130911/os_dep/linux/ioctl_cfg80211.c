@@ -713,7 +713,16 @@ void rtw_cfg80211_indicate_disconnect(_adapter *padapter)
 			//DBG_8192C("pwdev->sme_state=%d\n", pwdev->sme_state);
 		DBG_8192C("pwdev->sme_state(a)=%d\n", pwdev->sme_state);
 #else
+		if(check_fwstate(pmlmepriv, WIFI_UNDER_LINKING)) {
+			cfg80211_connect_result(padapter->pnetdev, NULL, NULL, 0, NULL, 0,
+				WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_ATOMIC);
+		} else {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
+			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, GFP_ATOMIC);
+#else
 			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, false, GFP_ATOMIC);
+#endif
+		}
 #endif
 	}
 }

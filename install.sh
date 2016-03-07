@@ -15,10 +15,10 @@ echo "##################################################"
 #			Decompress the driver source tal ball
 ################################################################################
 cd driver
-Drvfoulder=`ls |grep .tar.gz`
-echo "Decompress the driver source tar ball:"
-echo "	"$Drvfoulder
-tar zxvf $Drvfoulder
+#Drvfoulder=`ls |grep .tar.gz`
+#echo "Decompress the driver source tar ball:"
+#echo "	"$Drvfoulder
+#tar zxvf $Drvfoulder
 
 Drvfoulder=`ls |grep -iv '.tar.gz'`
 echo "$Drvfoulder"
@@ -35,21 +35,21 @@ fi
 #                       make clean
 ################################################################################
 echo "Authentication requested [root] for make clean:"
-if [ "`uname -r |grep fc`" == " " ]; then
+#if [ "`uname -r |grep fc`" == " " ]; then
         sudo su -c "make clean"; Error=$?
-else
-        su -c "make clean"; Error=$?
-fi
+#else
+#        su -c "make clean"; Error=$?
+#fi
 
 ################################################################################
 #			Compile the driver
 ################################################################################
 echo "Authentication requested [root] for make driver:"
-if [ "`uname -r |grep fc`" == " " ]; then
-	sudo su -c make; Error=$?
-else	
-	su -c make; Error=$?
-fi
+#if [ "`uname -r |grep fc`" == " " ]; then
+	sudo su -c "make -j6"; Error=$?
+#else	
+#	su -c make; Error=$?
+#fi
 ################################################################################
 #			Check whether or not the driver compilation is done
 ################################################################################
@@ -65,21 +65,21 @@ else
 	echo "##################################################"
 fi
 
-if [ "`uname -r |grep fc`" == " " ]; then
+#if [ "`uname -r |grep fc`" == " " ]; then
 	echo "Authentication requested [root] for remove driver:"
 	sudo su -c "rmmod $module"
 	echo "Authentication requested [root] for insert driver:"
 	sudo su -c "insmod $module"
 	echo "Authentication requested [root] for install driver:"
 	sudo su -c "make install"
-else
-	echo "Authentication requested [root] for remove driver:"
-	su -c "rmmod $module"
-	echo "Authentication requested [root] for insert driver:"
-	su -c "insmod $module"
-	echo "Authentication requested [root] for install driver:"
-	su -c "make install"
-fi
+#else
+#	echo "Authentication requested [root] for remove driver:"
+#	su -c "rmmod $module"
+#	echo "Authentication requested [root] for insert driver:"
+#	su -c "insmod $module"
+#	echo "Authentication requested [root] for install driver:"
+#	su -c "make install"
+#fi
 echo "##################################################"
 echo "The Setup Script is completed !"
 echo "##################################################"

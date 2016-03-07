@@ -46,7 +46,7 @@ echo "Authentication requested [root] for make clean:"
 ################################################################################
 echo "Authentication requested [root] for make driver:"
 #if [ "`uname -r |grep fc`" == " " ]; then
-	sudo su -c make; Error=$?
+	sudo su -c "make -j6"; Error=$?
 #else
 #	su -c make; Error=$?
 #fi

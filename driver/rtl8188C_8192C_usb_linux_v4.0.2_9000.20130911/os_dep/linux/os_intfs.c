@@ -277,6 +277,27 @@ static int	rtw_proc_cnt = 0;
 
 #define RTW_PROC_NAME DRV_NAME
 
+#if(LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
+typedef int (read_proc_t)(char *page, char **start, off_t off,
+                          int count, int *eof, void *data);
+typedef int (write_proc_t)(struct file *file, const char __user *buffer,
+                           unsigned long count, void *data);
+struct proc_dir_entry {
+        write_proc_t *write_proc;
+};
+static inline struct proc_dir_entry *create_proc_read_entry(const char *name,
+	mode_t mode, struct proc_dir_entry *base,
+	read_proc_t *read_proc, void * data)
+{
+	struct file_operations fops = {
+		owner: THIS_MODULE,
+		read: read_proc
+	};
+	struct proc_dir_entry *res = proc_create_data(name, mode, base, &fops, data);
+	return res;
+}
+#endif
+
 void rtw_proc_init_one(struct net_device *dev)
 {
 	struct proc_dir_entry *dir_dev = NULL;
@@ -309,8 +330,10 @@ void rtw_proc_init_one(struct net_device *dev)
 
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
 		rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, proc_net);
-#else
+#elif(LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
 		rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, init_net.proc_net);
+#else
+		rtw_proc=proc_mkdir_mode(rtw_proc_name, S_IFDIR, init_net.proc_net);
 #endif
 		if (rtw_proc == NULL) {
 			DBG_871X(KERN_ERR "Unable to create rtw_proc directory\n");
@@ -345,10 +368,15 @@ void rtw_proc_init_one(struct net_device *dev)
 
 	if(padapter->dir_dev == NULL)
 	{
+#if(LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
 		padapter->dir_dev = create_proc_entry(dev->name,
 					  S_IFDIR | S_IRUGO | S_IXUGO,
 					  rtw_proc);
-
+#else
+		padapter->dir_dev = proc_mkdir_mode(dev->name,
+					  S_IFDIR | S_IRUGO | S_IXUGO,
+					  rtw_proc);
+#endif
 		dir_dev = padapter->dir_dev;
 
 		if(dir_dev==NULL)

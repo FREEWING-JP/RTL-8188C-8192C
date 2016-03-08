@@ -702,14 +702,18 @@ check_bss:
 	}
 	else
 	{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
 		DBG_8192C("pwdev->sme_state(b)=%d\n", pwdev->sme_state);
+#endif
 		cfg80211_connect_result(padapter->pnetdev, cur_network->network.MacAddress
 			, pmlmepriv->assoc_req+sizeof(struct rtw_ieee80211_hdr_3addr)+2
 			, pmlmepriv->assoc_req_len-sizeof(struct rtw_ieee80211_hdr_3addr)-2
 			, pmlmepriv->assoc_rsp+sizeof(struct rtw_ieee80211_hdr_3addr)+6
 			, pmlmepriv->assoc_rsp_len-sizeof(struct rtw_ieee80211_hdr_3addr)-6
 			, WLAN_STATUS_SUCCESS, GFP_ATOMIC);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
 		DBG_8192C("pwdev->sme_state(a)=%d\n", pwdev->sme_state);
+#endif
 	}
 }
 
@@ -748,6 +752,7 @@ void rtw_cfg80211_indicate_disconnect(_adapter *padapter)
 #endif //CONFIG_P2P
 
 	if (!padapter->mlmepriv.not_indic_disco) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
 		DBG_8192C("pwdev->sme_state(b)=%d\n", pwdev->sme_state);
 
 		if(pwdev->sme_state==CFG80211_SME_CONNECTING)
@@ -759,6 +764,17 @@ void rtw_cfg80211_indicate_disconnect(_adapter *padapter)
 			//DBG_8192C("pwdev->sme_state=%d\n", pwdev->sme_state);
 
 		DBG_8192C("pwdev->sme_state(a)=%d\n", pwdev->sme_state);
+#else
+		if(check_fwstate(pmlmepriv, WIFI_UNDER_LINKING))
+			cfg80211_connect_result(padapter->pnetdev, NULL, NULL, 0, NULL, 0, 
+				WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_ATOMIC/*GFP_KERNEL*/);
+		else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
+			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, GFP_ATOMIC);
+#else
+			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, false, GFP_ATOMIC);
+#endif
+#endif
 	}
 }
  	
@@ -1645,6 +1661,7 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 			goto exit;
 		}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 		sinfo->filled |= STATION_INFO_SIGNAL;
 		sinfo->signal = translate_percentage_to_dbm(padapter->recvpriv.signal_strength);
 
@@ -1656,7 +1673,19 @@ static int cfg80211_rtw_get_station(struct wiphy *wiphy,
 
 		sinfo->filled |= STATION_INFO_TX_PACKETS;
 		sinfo->tx_packets = psta->sta_stats.tx_pkts;
+#else
+		sinfo->filled |= BIT(NL80211_STA_INFO_SIGNAL);
+		sinfo->signal = translate_percentage_to_dbm(padapter->recvpriv.signal_strength);
 
+		sinfo->filled |= BIT(NL80211_STA_INFO_TX_BITRATE);
+		sinfo->txrate.legacy = rtw_get_cur_max_rate(padapter);
+
+		sinfo->filled |= BIT(NL80211_STA_INFO_RX_PACKETS);
+		sinfo->rx_packets = sta_rx_data_pkts(psta);
+
+		sinfo->filled |= BIT(NL80211_STA_INFO_TX_PACKETS);
+		sinfo->tx_packets = psta->sta_stats.tx_pkts;
+#endif
 	}
 
 	//for Ad-Hoc/AP mode
@@ -3166,7 +3195,9 @@ void rtw_cfg80211_indicate_sta_assoc(_adapter *padapter, u8 *pmgmt_frame, uint f
 			ie_offset = _REASOCREQ_IE_OFFSET_;
 	
 		sinfo.filled = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 		sinfo.filled = STATION_INFO_ASSOC_REQ_IES;
+#endif
 		sinfo.assoc_req_ies = pmgmt_frame + WLAN_HDR_A3_LEN + ie_offset;
 		sinfo.assoc_req_ies_len = frame_len - WLAN_HDR_A3_LEN - ie_offset;
 		cfg80211_new_sta(ndev, GetAddr2Ptr(pmgmt_frame), &sinfo, GFP_ATOMIC);
@@ -5517,7 +5548,11 @@ static void rtw_cfg80211_preinit_wiphy(_adapter *padapter, struct wiphy *wiphy)
 #endif
 
 #if defined(CONFIG_PM) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+	wiphy->wowlan = &wowlan_stub;
+#else
 	wiphy->wowlan = wowlan_stub;
+#endif
 #endif
 
 #if defined(CONFIG_TDLS) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0))
